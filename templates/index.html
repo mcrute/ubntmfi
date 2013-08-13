@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Page Title</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/vendor/jquery.mobile-1.3.2.css" />
+        <script src="/static/vendor/jquery-1.10.2.js"></script>
+        <script src="/static/vendor/jquery.mobile-1.3.2.js"></script>
+    </head>
+
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $.ajax("/power-status/").done(function(data) {
+                for (key in data) {
+                    var value = data[key] ? "on" : "off";
+                    $("#"+key).val(value).slider("refresh");
+                }
+            });
+            $("select[data-role=slider]").on("change", function() {
+                var data = {};
+                data[this.name] = $(this).val();
+                $.ajax({ url: "/power-status/", data: data, type: "POST" });
+            });
+        });
+    </script>
+
+    <body>
+        <div data-role="page">
+            <div data-role="header">
+                <h1>Appliances</h1>
+            </div><!-- /header -->
+
+            <div data-role="content">
+                <form>
+                    <div class="ui-grid-a">
+                        <div class="ui-block-a"><div class="ui-bar" style="height:60px">
+                                <label for="relay2">Light</label>
+                                <select name="relay2" id="relay2" data-role="slider">
+                                    <option value="off">Off</option>
+                                    <option value="on">On</option>
+                                </select>
+                        </div></div>
+                    </div><!-- /grid-a -->
+                    <div class="ui-grid-a">
+                        <div class="ui-block-a"><div class="ui-bar" style="height:60px">
+                                <label for="relay1">Fan</label>
+                                <select name="relay1" id="relay1" data-role="slider">
+                                    <option value="off">Off</option>
+                                    <option value="on">On</option>
+                                </select>
+                        </div></div>
+                    </div><!-- /grid-a -->
+                </form>
+            </div><!-- /content -->
+        </div>
+    </body>
+</html>
