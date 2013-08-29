@@ -13,12 +13,13 @@
             $.ajax("/power-status/").done(function(data) {
                 for (key in data) {
                     var value = data[key] ? "on" : "off";
+                    var key = key.replace("'", "-").replace(" ", "_");
                     $("#"+key).val(value).slider("refresh");
                 }
             });
             $("select[data-role=slider]").on("change", function() {
                 var data = {};
-                data[this.name] = $(this).val();
+                data[$(this).attr("data-name")] = $(this).val();
                 $.ajax({ url: "/power-status/", data: data, type: "POST" });
             });
         });
@@ -32,24 +33,17 @@
 
             <div data-role="content">
                 <form>
+                    {% for name, id in ports %}
                     <div class="ui-grid-a">
                         <div class="ui-block-a"><div class="ui-bar" style="height:60px">
-                                <label for="relay2">Light</label>
-                                <select name="relay2" id="relay2" data-role="slider">
+                                <label for="{{ id }}">{{ name }}</label>
+                                <select name="{{ id }}" id="{{ id }}" data-name="{{ name }}" data-role="slider">
                                     <option value="off">Off</option>
                                     <option value="on">On</option>
                                 </select>
                         </div></div>
                     </div><!-- /grid-a -->
-                    <div class="ui-grid-a">
-                        <div class="ui-block-a"><div class="ui-bar" style="height:60px">
-                                <label for="relay1">Fan</label>
-                                <select name="relay1" id="relay1" data-role="slider">
-                                    <option value="off">Off</option>
-                                    <option value="on">On</option>
-                                </select>
-                        </div></div>
-                    </div><!-- /grid-a -->
+                    {% end %}
                 </form>
             </div><!-- /content -->
         </div>

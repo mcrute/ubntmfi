@@ -6,49 +6,41 @@ import tornado.options
 import tornado.process
 import tornado.template
 import tornado.httpserver
+from mfiapi import MFiAPI
 from tornado.options import define, options
 
 define("port", default=8888, help="run on the given port", type=int)
 
 
-STATUSES = {
-    'relay1': True,  # Fan
-    'relay2': False, # Light
-    'relay3': False,
-}
-
-
-# for relay in STATUSES.keys():
-#     caller = subprocess.Popen(["ssh","admin@10.0.1.15",
-#         "cat /proc/power/{}".format(relay)], stdout=subprocess.PIPE)
-#     output = caller.communicate()[0]
-#     STATUSES[relay] = output.startswith("1")
-
-
 class PowerStatusHandler(tornado.web.RequestHandler):
 
-    def get(self):
-        self.finish(STATUSES)
+    def __init__(self, *args, **kwargs):
+        self.api = MFiAPI('172.16.0.38:6443')
+        super(PowerStatusHandler, self).__init__(*args, **kwargs)
 
-    @tornado.web.asynchronous
-    def _trigger_relay(self, relay, value):
-        STATUSES[relay] = value
-        value = 1 if value is True else 0
-        tornado.process.Subprocess(["ssh","admin@10.0.1.15",
-            "echo {} > /proc/power/{}".format(value, relay)],
-                stdout=tornado.process.Subprocess.STREAM)
+    def get(self):
+        self.api.login('admin', 'password')
+        self.finish(self.api.port_status())
 
     def post(self):
-        for key, value in self.request.arguments.items():
-            self._trigger_relay(key, value[0] == "on")
+        self.api.login('admin', 'password')
 
-        self.finish(STATUSES)
+        for key, value in self.request.arguments.items():
+            self.api.toggle_port(key)
 
 
 class IndexHandler(tornado.web.RequestHandler):
 
+    def __init__(self, *args, **kwargs):
+        self.api = MFiAPI('172.16.0.38:6443')
+        super(IndexHandler, self).__init__(*args, **kwargs)
+
     def get(self):
-        self.render("index.html")
+        self.api.login('admin', 'password')
+
+        ports = [(port, port.replace(" ", "_").replace("'", "-")) for port in self.api.port_status().keys()]
+
+        self.render("index.html", ports=ports)
 
 
 class Application(tornado.web.Application):
