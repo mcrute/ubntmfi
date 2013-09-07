@@ -1,0 +1,30 @@
+Ubiquiti Inform Protocol
+========================
+
+These are just some unstructured notes about the inform protocol at this point.
+
+Packet Structure
+----------------
+4 bytes          magic number            integer
+4 bytes          version                 integer
+6 bytes          hwaddr                  string
+2 bytes          flags                   short
+16 bytes         initialization vector   string
+4 bytes          data version            integer
+4 bytes          data length             integer
+n bytes          encrypted payload       string
+
+
+magic must == 1414414933
+data version must < 1
+flags & 0x1 != 0 means encrypted
+flags & 0x2 != 0 means compressed
+
+
+The payload is AES encrypted in CBC mode using PKCS5 padding. They key is the
+device auth key from the database or a master key that is hard coded if the
+device hasn't been provisioned yet. The master key is hard coded in the
+controller code in the DeviceManager class and pretty easy to find.
+
+
+MASTER_KEY = "ba86f2bbe107c7c57eb5f2690775c712"
