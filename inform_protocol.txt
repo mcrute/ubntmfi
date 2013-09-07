@@ -1,7 +1,17 @@
 Ubiquiti Inform Protocol
 ========================
 
-These are just some unstructured notes about the inform protocol at this point.
+The mFi uses the Ubiquiti inform protocol to handle all communications to and
+from the controller. This is the way that it transmits the current state of the
+system to the controller (looks like it just sends mca-dump output) as well as
+how it receives the instructions from the controller as to what to enable or
+disable.
+
+Everything appears to be pull-based, even provisioning. This makes sense with
+the cloud controller where the controller has no access to your network. I
+haven't documented yet how anything works within the protocol, that's next.
+This documents the overall procol itself.
+
 
 Packet Structure
 ----------------
@@ -26,5 +36,8 @@ device auth key from the database or a master key that is hard coded if the
 device hasn't been provisioned yet. The master key is hard coded in the
 controller code in the DeviceManager class and pretty easy to find.
 
+On devices running protocol version 1 the encrypted payload is just JSON data.
+In version 0 of the protocol the data was key=value pairs separated by
+newlines. All of the mFi hardware I have access to uses protocol version 1.
 
 MASTER_KEY = "ba86f2bbe107c7c57eb5f2690775c712"
