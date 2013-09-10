@@ -1,12 +1,23 @@
+import json
 import struct
 import binascii
 from Crypto.Cipher import AES
+from cStringIO import StringIO
 
 
 class BinaryDataStream(object):
+    """Directional binary data stream
+
+    Reads and writes binary data from any stream-like object. This object is
+    not bi-directional. Does no interpertation just unpacking and packing.
+    """
 
     def __init__(self, data):
         self.data = data
+
+    @classmethod
+    def for_output(cls):
+        return cls(StringIO())
 
     def read_int(self):
         return struct.unpack(">i", self.data.read(4))[0]
@@ -17,8 +28,25 @@ class BinaryDataStream(object):
     def read_string(self, length):
         return self.data.read(length)
 
+    def write_int(self, data):
+        self.data.write(struct.pack(">i", data))
+
+    def write_short(self, data):
+        self.data.write(struct.pack(">h", data))
+
+    def write_string(self, data):
+        self.data.write(data)
+
+    def get_output(self):
+        return self.data.getvalue()
+
 
 class Cryptor(object):
+    """AES encryption strategy
+
+    Handles AES crypto by wrapping pycrypto. Does padding and un-padding as
+    well as key conversions when needed.
+    """
 
     def __init__(self, key, iv):
         self.iv = iv
@@ -31,24 +59,28 @@ class Cryptor(object):
 
     @staticmethod
     def pad(s, BS=16):
-        return s + (BS - len(s) % BS) * chr(BS - len(s) % BS) 
+        return s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
 
     def decrypt(self, payload):
         return self.unpad(self.cipher.decrypt(payload))
 
+    def encrypt(self, payload):
+        return self.cipher.encrypt(self.pad(payload))
 
-class InformParser(object):
 
-    PROTOCOL_MAGIC = 1414414933
-    MAX_VERSION = 1
+class InformPacket(object):
+    """Inform model object
+
+    Holds basic, parsed, inform packet data. Does some interpertation for
+    fields like flags. Can be passed to and from the serialiser. This class
+    only fully supports version 1 of the inform data protocol. Version 0
+    payload parsing is not supported.
+    """
 
     ENCRYPTED_FLAG = 0x1
     COMPRESSED_FLAG = 0x2
 
-    def __init__(self, input_stream, key):
-        self.input_stream = input_stream
-        self.key = key
-
+    def __init__(self):
         self.magic_number = None
         self.version = None
         self.mac_addr = None
@@ -56,15 +88,11 @@ class InformParser(object):
         self.iv = None
         self.data_version = None
         self.data_length = None
-        self.payload = None
-
-    @classmethod
-    def open(cls, filename, key):
-        return cls(BinaryDataStream(open(filename, "rb")), key)
+        self.raw_payload = None
 
     @staticmethod
     def _format_mac_addr(mac_bytes):
-        return "-".join([binascii.hexlify(i) for i in mac_bytes])
+        return ":".join([binascii.hexlify(i) for i in mac_bytes])
 
     def _has_flag(self, flag):
         return self.flags & flag != 0
@@ -82,21 +110,84 @@ class InformParser(object):
         return self._has_flag(self.COMPRESSED_FLAG)
 
     @property
-    def decrypted_payload(self):
-        return Cryptor(self.key, self.iv).decrypt(self.payload)
+    def payload(self):
+        if self.data_version == 1:
+            return json.loads(self.raw_payload)
+        else:
+            return self.raw_payload
 
-    def parse(self):
-        self.magic = self.input_stream.read_int()
-        assert self.magic == self.PROTOCOL_MAGIC
 
-        self.version = self.input_stream.read_int()
-        assert self.version < self.MAX_VERSION
+class InformSerializer(object):
+    """Inform protocol version 1 parser/serializer
 
-        self.mac_addr = self.input_stream.read_string(6)
-        self.flags = self.input_stream.read_short()
-        self.iv = self.input_stream.read_string(16)
-        self.data_version = self.input_stream.read_int()
-        self.data_length = self.input_stream.read_int()
-        self.payload = self.input_stream.read_string(self.data_length)
+    Handles the parsing of the inform binary protocol to python objects and
+    seralization of python objects to inform binary protocol. Handles
+    cryptography and data formats. Compatible only with version 1 of the data
+    format.
+    """
 
-        return self
+    MASTER_KEY = "ba86f2bbe107c7c57eb5f2690775c712"
+    PROTOCOL_MAGIC = 1414414933
+    MAX_VERSION = 1
+
+    def __init__(self, key=MASTER_KEY):
+        self.key = key
+        self._used_key = None
+
+    def _decrypt_payload(self, packet):
+        if not packet.is_encrypted:
+            return
+
+        for key in (self.key, self.MASTER_KEY):
+            decrypted = Cryptor(key, packet.iv).decrypt(packet.raw_payload)
+
+            try:
+                json.loads(decrypted)
+                packet.raw_payload = decrypted
+                self._used_key = key
+                break
+            except ValueError:
+                continue
+
+    def parse(self, input):
+        input_stream = BinaryDataStream(input)
+
+        packet = InformPacket()
+
+        packet.magic = input_stream.read_int()
+        assert packet.magic == self.PROTOCOL_MAGIC
+
+        packet.version = input_stream.read_int()
+        assert packet.version < self.MAX_VERSION
+
+        packet.mac_addr = input_stream.read_string(6)
+        packet.flags = input_stream.read_short()
+        packet.iv = input_stream.read_string(16)
+        packet.data_version = input_stream.read_int()
+        packet.data_length = input_stream.read_int()
+
+        packet.raw_payload = input_stream.read_string(packet.data_length)
+        self._decrypt_payload(packet)
+
+        return packet
+
+    def _encrypt_payload(self, packet):
+        if packet.data_version != 1:
+            raise ValueError("Can no encrypt contents of pre 1.0 packets")
+
+        key = self._used_key if self._used_key else self.MASTER_KEY
+        return Cryptor(key, packet.iv).encrypt(json.dumps(packet.payload))
+
+    def serialize(self, packet):
+        output = BinaryDataStream.for_output()
+
+        output.write_int(packet.magic)
+        output.write_int(packet.version)
+        output.write_string(packet.mac_addr)
+        output.write_short(packet.flags)
+        output.write_string(packet.iv)
+        output.write_int(packet.data_version)
+        output.write_int(packet.data_length)
+        output.write_string(self._encrypt_payload(packet))
+
+        return output.get_output()
