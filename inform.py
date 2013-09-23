@@ -1,4 +1,5 @@
 import json
+import copy
 import struct
 import binascii
 from Crypto.Cipher import AES
@@ -89,6 +90,17 @@ class InformPacket(object):
         self.data_version = None
         self.data_length = None
         self.raw_payload = None
+        self._used_key = None
+
+    def response_copy(self):
+        """Copy object for use in response
+
+        Generates a deep copy of the object and removes the payload so that it
+        can be used to respond to the station that send this inform request.
+        """
+        new_obj = copy.deepcopy(self)
+        new_obj.raw_payload = None
+        return new_obj
 
     @staticmethod
     def _format_mac_addr(mac_bytes):
@@ -112,9 +124,13 @@ class InformPacket(object):
     @property
     def payload(self):
         if self.data_version == 1:
-            return json.loads(self.raw_payload)
+            return json.loads(self.raw_payload.decode("latin-1"))
         else:
             return self.raw_payload
+
+    @payload.setter
+    def payload(self, value):
+        self.raw_payload = json.dumps(value)
 
 
 class InformSerializer(object):
@@ -130,32 +146,41 @@ class InformSerializer(object):
     PROTOCOL_MAGIC = 1414414933
     MAX_VERSION = 1
 
-    def __init__(self, key=MASTER_KEY):
+    def __init__(self, key=None, key_bag=None):
         self.key = key
-        self._used_key = None
+        self.key_bag = key_bag or {}
 
     def _decrypt_payload(self, packet):
         if not packet.is_encrypted:
             return
 
-        for key in (self.key, self.MASTER_KEY):
+        i = 0
+        key = self.key_bag.get(packet.formatted_mac_addr)
+
+        for key in (key, self.key, self.MASTER_KEY):
+            if key is None:
+                continue
+
             decrypted = Cryptor(key, packet.iv).decrypt(packet.raw_payload)
 
             try:
-                json.loads(decrypted)
+                json.loads(decrypted.decode("latin-1"))
                 packet.raw_payload = decrypted
-                self._used_key = key
+                packet._used_key = key
                 break
-            except ValueError:
-                continue
+            except ValueError as err:
+                if err.message == "No JSON object could be decoded":
+                    continue
+                else:
+                    raise
 
     def parse(self, input):
         input_stream = BinaryDataStream(input)
 
         packet = InformPacket()
 
-        packet.magic = input_stream.read_int()
-        assert packet.magic == self.PROTOCOL_MAGIC
+        packet.magic_number = input_stream.read_int()
+        assert packet.magic_number == self.PROTOCOL_MAGIC
 
         packet.version = input_stream.read_int()
         assert packet.version < self.MAX_VERSION
@@ -175,13 +200,13 @@ class InformSerializer(object):
         if packet.data_version != 1:
             raise ValueError("Can no encrypt contents of pre 1.0 packets")
 
-        key = self._used_key if self._used_key else self.MASTER_KEY
+        key = packet._used_key if packet._used_key else self.MASTER_KEY
         return Cryptor(key, packet.iv).encrypt(json.dumps(packet.payload))
 
     def serialize(self, packet):
         output = BinaryDataStream.for_output()
 
-        output.write_int(packet.magic)
+        output.write_int(packet.magic_number)
         output.write_int(packet.version)
         output.write_string(packet.mac_addr)
         output.write_short(packet.flags)
