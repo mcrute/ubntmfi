@@ -5,7 +5,7 @@ from cStringIO import StringIO
 from inform import InformSerializer, Cryptor
 
 
-PATH = "/Users/mcrute/Desktop/test"
+PATH = "/Users/mcrute/Desktop/test2"
 
 
 for file in os.listdir(PATH):
