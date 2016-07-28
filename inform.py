@@ -163,16 +163,10 @@ class InformSerializer(object):
 
             decrypted = Cryptor(key, packet.iv).decrypt(packet.raw_payload)
 
-            try:
-                json.loads(decrypted.decode("latin-1"))
-                packet.raw_payload = decrypted
-                packet._used_key = key
-                break
-            except ValueError as err:
-                if err.message == "No JSON object could be decoded":
-                    continue
-                else:
-                    raise
+            json.loads(decrypted.decode("latin-1"))
+            packet.raw_payload = decrypted
+            packet._used_key = key
+            break
 
     def parse(self, input):
         input_stream = BinaryDataStream(input)
