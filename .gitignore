@@ -1,3 +1,4 @@
 *.pyc
 .sandbox_name
 keystore.py
+/data

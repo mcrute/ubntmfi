@@ -151,9 +151,6 @@ class InformSerializer(object):
         self.key_bag = key_bag or {}
 
     def _decrypt_payload(self, packet):
-        if not packet.is_encrypted:
-            return
-
         i = 0
         key = self.key_bag.get(packet.formatted_mac_addr)
 
@@ -186,7 +183,9 @@ class InformSerializer(object):
         packet.data_length = input_stream.read_int()
 
         packet.raw_payload = input_stream.read_string(packet.data_length)
-        self._decrypt_payload(packet)
+
+        if packet.is_encrypted:
+            self._decrypt_payload(packet)
 
         return packet
 

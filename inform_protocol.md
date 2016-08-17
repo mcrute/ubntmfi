@@ -9,7 +9,7 @@ disable.
 
 Everything appears to be pull-based, even provisioning. This makes sense with
 the cloud controller where the controller has no access to your network. I
-haven't documented yet how anything works within the protocol, that's next.
+have not documented yet how anything works within the protocol, that is next.
 This documents the overall protocol itself.
 
 The device will inform by executing an HTTP POST with an encrypted payload to
@@ -21,14 +21,14 @@ appear to contain multiple commands.
 
 Raw Packet Structure
 --------------------
-4 bytes          magic number            integer
-4 bytes          version                 integer
-6 bytes          hwaddr                  string
-2 bytes          flags                   short
-16 bytes         initialization vector   string
-4 bytes          data version            integer
-4 bytes          data length             integer
-n bytes          encrypted payload       string
+4 bytes    magic number            integer
+4 bytes    version                 integer
+6 bytes    hwaddr                  string
+2 bytes    flags                   short
+16 bytes   initialization vector   string
+4 bytes    data version            integer
+4 bytes    data length             integer
+n bytes    AES encrypted payload   string
 
 Raw Packet Constraints
 ----------------------
@@ -41,7 +41,7 @@ Payload Types
 -------------
 The payload is AES encrypted in CBC mode using PKCS5 padding. They key is the
 device auth key from the database or a master key that is hard coded if the
-device hasn't been provisioned yet. The master key is hard coded in the
+device has not been provisioned yet. The master key is hard coded in the
 controller code in the DeviceManager class and pretty easy to find.
 
 MASTER_KEY = "ba86f2bbe107c7c57eb5f2690775c712"
@@ -118,8 +118,8 @@ following output payloads.
 Input Payloads
 --------------
 Incoming packets appear to be a JSON version of the out put of the `mca-dump`
-command on the device. There is definitely some AirOS legacy in here. I don't
-document the whole input payload since most of it isn't interesting.
+command on the device. There is definitely some AirOS legacy in here. I do not
+document the whole input payload since most of it is not interesting.
 
     callback from device: javascript object
         alarm: list of sensors
