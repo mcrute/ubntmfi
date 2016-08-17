@@ -83,11 +83,27 @@ following output payloads.
     _type: reboot
         datetime: rfc3339 formatted date, server time
         device_id: device ID from mongodb
+        server_time_in_utc: server time in UTC as a unix timestamp (string)
+        time: server time as unix timestamp (int)
+        _id: unknown id string (5232701de4b0457a2f2f031f)
 
 ### Heartbeat / No-Op
     _type: noop
         interval: next checkin time in seconds (integer)
         server_time_in_utc: server time in UTC as a unix timestamp (string)
+
+### Locate Mode
+This mode didn't appear to change anything. My guess is that this should
+trigger the LED to blink as it does on the Unifi devices but appears to have no
+effect, at least on the mPower devices.
+
+    _type: cmd
+        cmd: locate
+        datetime: rfc3339 formatted date, server time
+        device_id: device ID from mongodb
+        server_time_in_utc: server time in UTC as a unix timestamp (string)
+        time: server time as unix timestamp (int)
+        _id: unknown id string (5232701de4b0457a2f2f031f)
 
 ### Command
     _type: cmd
@@ -101,17 +117,16 @@ following output payloads.
         server_time_in_utc: server time in UTC as a unix timestamp (string)
         time: server time as unix timestamp (int)
         device_id: device ID from mongodb
-        cmd: command to use (mfi-output)
+        cmd: command to use (mfi-output to change outputs)
         mac: device mac address
         model: device model (Outlet for mPower)
-        off_volt: ?? (int)
+        off_volt: always 0?? (int)
         port: device port to update (int)
         sId: sensor ID
-        timer: ?? (int)
+        timer: always 0?? (int)
         val: output value (int)
-        volt: ?? (int)
-
-    // val and volt set to 1 to turn on, 0 to turn off
+        volt: val and volt set to 1 to turn on, 0 to turn off (int)
+        dimmer_ramp: always 1?? (int) (only for switch and outlet)
 
 
 ## Input Payloads
