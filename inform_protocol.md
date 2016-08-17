@@ -19,16 +19,16 @@ continues until the controller sends the next noop response. Responses never
 appear to contain multiple commands.
 
 ## Raw Packet Structure
-| Size     | Purpose               | Data Type |
-| -------- | --------------------- | --------- |
-| 4 bytes  | magic number          | integer   |
-| 4 bytes  | version               | integer   |
-| 6 bytes  | hwaddr                | string    |
-| 2 bytes  | flags                 | short     |
-| 16 bytes | initialization vector | string    |
-| 4 bytes  | data version          | integer   |
-| 4 bytes  | data length           | integer   |
-| n bytes  | AES encrypted payload | string    |
+| Size     | Purpose                   | Data Type |
+| -------- | ------------------------- | --------- |
+| 4 bytes  | magic number              | integer   |
+| 4 bytes  | version                   | integer   |
+| 6 bytes  | mac address               | string    |
+| 2 bytes  | flags                     | short     |
+| 16 bytes | AES initialization vector | string    |
+| 4 bytes  | data version              | integer   |
+| 4 bytes  | data length               | integer   |
+| n bytes  | AES encrypted payload     | string    |
 
 ## Raw Packet Constraints
 * magic must == `1414414933` (TNBU)
@@ -57,7 +57,8 @@ Output payloads are those that originate from the controller and are bound for
 the device. These always appear to contain a \_type field. I have observed the
 following output payloads.
 
-    _type: firmware upgrade (upgrade)
+### Firmware Upgrade
+    _type: upgrade
         url: full url to firmware.bin
         datetime: rfc3339 formatted date, server time
         server_time_in_utc: server time in UTC as a unix timestamp (string)
@@ -66,7 +67,8 @@ following output payloads.
         _id: unknown id string (5232701de4b0457a2f2f031f)
         device_id: device ID from mongodb
 
-    _type: config update (setparam)
+### Config Update
+    _type: setparam
         port_cfg: configuration for ports as string
         analog_cfg: analog port config (empty for mPower)
         authorized_guests: authorized guests file (empty)
@@ -77,14 +79,18 @@ following output payloads.
         system_cfg: system config file
         server_time_in_utc: server time in UTC as a unix timestamp (string)
 
-    _type: reboot (reboot)
+### Reboot
+    _type: reboot
         datetime: rfc3339 formatted date, server time
         device_id: device ID from mongodb
 
-    _type: heartbeat (noop)
+### Heartbeat / No-Op
+    _type: noop
         interval: next checkin time in seconds (integer)
+        server_time_in_utc: server time in UTC as a unix timestamp (string)
 
-    _type: command (cmd)
+### Command
+    _type: cmd
         _admin: admin data object
             _id: mongodb id of admin
             lang: admin language (en_US)
@@ -115,93 +121,93 @@ appears that mFi is just using the Unfi firmware and has hacked it a bit for
 their use-case so most of the fields outside of alarm are not relevant to the
 mFi use-case.
 
-    callback from device: javascript object
-        alarm: list of sensors
-            index: port name
-            sId: sensor ID hash
-            time: device time
+    alarm: list of sensors
+        index: port name
+        sId: sensor ID hash
+        time: device time
 
-            // For mPort Only
-            tag: kind of reading presented (magnetic, temperature, humidity)
-            type: kind of device (input, analog, output)
+        // For mPort Only
+        tag: kind of reading presented (magnetic, temperature, humidity)
+        type: kind of device (input, analog, output)
+        val: value (float)
+
+        // For mPower Only
+        entries: list of entry objects
+            tag: kind of reading (output, pf, energy_sum, v_rms, i_rms, active_pwr)
+            type: sensor type (output, analog, rmsSum, rms)
             val: value (float)
 
-            // For mPower Only
-            entries: list of entry objects
-                tag: kind of reading (output, pf, energy_sum, v_rms, i_rms, active_pwr)
-                type: sensor type (output, analog, rmsSum, rms)
-                val: value (float)
+    if_table: list of interfaces and stats
+        ip: interface ip
+        mac: interface mac address
+        name: interface device name (dev handle)
+        rx_bytes: bytes received on the interface
+        rx_dropped: packets dropped by the interface
+        rx_errors: receive errors on the interface
+        rx_packets: packets received on the interface
+        tx_bytes: bytes transmitted by the interface
+        tx_dropped: trasmit drops on the interface
+        tx_errors: transmit errors on the interface
+        tx_packets: number of packets transmitted by the interface
+        type: appears to be the same as name
 
-        if_table: list of interfaces and stats
-            ip: interface ip
-            mac: interface mac address
-            name: interface device name (dev handle)
-            rx_bytes: bytes received on the interface
-            rx_dropped: packets dropped by the interface
-            rx_errors: receive errors on the interface
-            rx_packets: packets received on the interface
-            tx_bytes: bytes transmitted by the interface
-            tx_dropped: trasmit drops on the interface
-            tx_errors: transmit errors on the interface
-            tx_packets: number of packets transmitted by the interface
-            type: appears to be the same as name
+    radio_table: list of radios in the device
+        builtin_ant_gain: gain of builtin antenna
+        builtin_antenna: boolean, does device have antenna
+        max_txpower: maximum transmit power
+        name: name of radio
+        radio: radio type (ex: ng)
+        scan_table: list, unknown
+        
+    vap_table: table of joined wireless networks
+        bssid: network SSID
+        ccq: client connection qality
+        channel: channel number
+        essid: network friendly name
+        id: mode? (ex: user)
+        name: uplink device name
+        num_sta: number of connected stations (always 0)
+        radio: radio type (ex: ng)
+        rx_bytes: bytes received on the interface
+        rx_dropped: packets dropped by the interface
+        rx_errors: receive errors on the interface
+        rx_packets: packets received on the interface
+        tx_bytes: bytes transmitted by the interface
+        tx_dropped: trasmit drops on the interface
+        tx_errors: transmit errors on the interface
+        tx_packets: number of packets transmitted by the interface
+        rx_crypts: unknown
+        rx_frags: received fragmented packets
+        rx_nwids: received network beacons
+        tx_power: transmitting power of the radio (assumed in dBm)
+        tx_retries: number of transmit retries on interface
+        usage: same as id
 
-        radio_table: list of radios in the device
-            builtin_ant_gain: gain of builtin antenna
-            builtin_antenna: boolean, does device have antenna
-            max_txpower: maximum transmit power
-            name: name of radio
-            radio: radio type (ex: ng)
-            scan_table: list, unknown
-            
-        vap_table: table of joined wireless networks
-            bssid: network SSID
-            ccq: client connection qality
-            channel: channel number
-            essid: network friendly name
-            id: mode? (ex: user)
-            name: uplink device name
-            num_sta: number of connected stations (always 0)
-            radio: radio type (ex: ng)
-            rx_bytes: bytes received on the interface
-            rx_dropped: packets dropped by the interface
-            rx_errors: receive errors on the interface
-            rx_packets: packets received on the interface
-            tx_bytes: bytes transmitted by the interface
-            tx_dropped: trasmit drops on the interface
-            tx_errors: transmit errors on the interface
-            tx_packets: number of packets transmitted by the interface
-            rx_crypts: unknown
-            rx_frags: received fragmented packets
-            rx_nwids: received network beacons
-            tx_power: transmitting power of the radio (assumed in dBm)
-            tx_retries: number of transmit retries on interface
-            usage: same as id
-
-        hostname: hostname of device ("ubnt" unless changed)
-        ip: IP of device
-        mac: mac address of primary interface
-        mfi: boolean, indicates if an mfi device
-        model: device model name
-        model_display: display name for device
-        serial: device serial number
-        uptime: uptime in seconds since last reboot
-        version: firmware version
-        default: boolean, device is unconfigured
-        cfgversion: string, unknown (ex: c3846443e1b4860b)
-        guest_token: string, unknown (ex: 364E8B215D16AB963A53232E3873000C)
-        inform_url: string, url to which the device is reporting
-        isolated: boolean, can the device reach the rest of the network
-        localversion: string, unknown (ex: ?)
-        locating: boolean, is the device in locating mode (blinking LED)
-        portversion: string, unknown (ex: 443eb55240f26367)
-        time: integer, device time as unix timestamp
-        trackable: boolean as string, unknown
-        uplink: string, unix device name (dev handle) of the primary uplink device
+    hostname: hostname of device ("ubnt" unless changed)
+    ip: IP of device
+    mac: mac address of primary interface
+    mfi: boolean, indicates if an mfi device
+    model: device model name
+    model_display: display name for device
+    serial: device serial number
+    uptime: uptime in seconds since last reboot
+    version: firmware version
+    default: boolean, device is unconfigured
+    cfgversion: string, unknown (ex: c3846443e1b4860b)
+    guest_token: string, unknown (ex: 364E8B215D16AB963A53232E3873000C)
+    inform_url: string, url to which the device is reporting
+    isolated: boolean, can the device reach the rest of the network
+    localversion: string, unknown (ex: ?)
+    locating: boolean, is the device in locating mode (blinking LED)
+    portversion: string, unknown (ex: 443eb55240f26367)
+    time: integer, device time as unix timestamp
+    trackable: boolean as string, unknown
+    uplink: string, unix device name (dev handle) of the primary uplink device
 
 
 ## Config Samples
 These are some observed configuration payloads for the configuration packets.
+In their json form it is a single line string with newlines encoded as `\n`.
 
 ### mgmt cfg
     mgmt.is_default=false
