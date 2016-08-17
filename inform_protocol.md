@@ -19,20 +19,22 @@ continues until the controller sends the next noop response. Responses never
 appear to contain multiple commands.
 
 ## Raw Packet Structure
-4 bytes    magic number            integer
-4 bytes    version                 integer
-6 bytes    hwaddr                  string
-2 bytes    flags                   short
-16 bytes   initialization vector   string
-4 bytes    data version            integer
-4 bytes    data length             integer
-n bytes    AES encrypted payload   string
+| Size     | Purpose               | Data Type |
+| -------- | --------------------- | --------- |
+| 4 bytes  | magic number          | integer   |
+| 4 bytes  | version               | integer   |
+| 6 bytes  | hwaddr                | string    |
+| 2 bytes  | flags                 | short     |
+| 16 bytes | initialization vector | string    |
+| 4 bytes  | data version          | integer   |
+| 4 bytes  | data length           | integer   |
+| n bytes  | AES encrypted payload | string    |
 
 ## Raw Packet Constraints
-magic must == 1414414933
-data version must < 1
-flags & 0x1 != 0 means encrypted
-flags & 0x2 != 0 means compressed
+* magic must == `1414414933` (TNBU)
+* data version must < `1`
+* `flags & 0x1 != 0` means encrypted
+* `flags & 0x2 != 0` means compressed
 
 ## Payload Types
 The payload is AES encrypted in CBC mode using PKCS5 padding. They key is the
@@ -52,7 +54,7 @@ and those going out of the controller.
 
 ## Output Payloads
 Output payloads are those that originate from the controller and are bound for
-the device. These always appear to contain a _type field. I have observed the
+the device. These always appear to contain a \_type field. I have observed the
 following output payloads.
 
     _type: firmware upgrade (upgrade)
