@@ -10,7 +10,7 @@ from SimpleHTTPServer import  SimpleHTTPRequestHandler
 class Handler(SimpleHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
-        super(SimpleHTTPServer, self).__init__(*args, **kwargs)
+        SimpleHTTPRequestHandler.__init__(self, *args, **kwargs)
         self.parser = InformSerializer(key_bag=get_keys("inform.cfg"))
 
     def _get_keys(self, filename):
