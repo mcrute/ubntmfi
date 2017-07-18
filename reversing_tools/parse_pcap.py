@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'python'))
 
 import dpkt
@@ -47,17 +48,27 @@ def collect_records(from_file):
 
 def make_serializer(from_file):
     with open(from_file) as fp:
-        keystore = { i['mac']: i['x_authkey'] for i in json.load(fp) }
+        keystore = {i['mac']: i['x_authkey'] for i in json.load(fp)}
 
     return InformSerializer("", keystore)
 
 
 if __name__ == "__main__":
-    ser = make_serializer("devices.json")
+    import glob
+    ser = make_serializer("data/devices.json")
 
-    for i, data in enumerate(collect_records("mfi.out")):
-        try:
-            packet = ser.parse(StringIO(data))
-            print packet.raw_payload
-        except ValueError:
-            pass
+    for file in glob.glob("data/test_files/*.bin"):
+        fn, ext = os.path.splitext(file)
+        path = os.path.dirname(fn)
+        fn = os.path.basename(fn)
+
+        with open(file) as fin, open(os.path.join(path, fn + ".txt"), 'w') as fout:
+            json.dump(json.loads(ser.parse(fin).raw_payload), fout, sort_keys=True,
+                      indent=4, separators=(',', ': '))
+
+#    for i, data in enumerate(collect_records("mfi.out")):
+#        try:
+#            packet = ser.parse(StringIO(data))
+#            print packet.raw_payload
+#        except ValueError:
+#            pass
